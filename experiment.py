@@ -1,9 +1,9 @@
 import trio
 import os
 import io
-from typing import Coroutine
+from typing import Coroutine, Callable
 
-from pyrum import Rumor
+from pyrum import Rumor, SubprocessConn
 
 
 # Before importing spec, load config:
@@ -199,10 +199,13 @@ async def server_blocks_by_root_example(rumor: Rumor, nursery: trio.Nursery):
 async def run_rumor_function(fn: Callable[[Rumor, trio.Nursery], Coroutine]):
     async with trio.open_nursery() as nursery:
         try:
-            # Hook it up to your own local version of Rumor, if you like.
-            # And optionally enable debug=True to be super verbose about Rumor communication.
-            async with Rumor(cmd='cd ../rumor && go run .') as rumor:
-                await fn(rumor, nursery)
+            async with SubprocessConn(cmd='cd ../rumor && go run . bare') as conn:
+                # A Trio nursery hosts all the async tasks of the Rumor instance.
+                async with trio.open_nursery() as nursery:
+                    # And optionally use Rumor(conn, debug=True) to be super verbose about Rumor communication.
+                    await fn(Rumor(conn, nursery), nursery)
+                    # Cancel the nursery to signal that we are not using Rumor anymore
+                    nursery.cancel_scope.cancel()
         except Exception as e:
             print(e)
 
