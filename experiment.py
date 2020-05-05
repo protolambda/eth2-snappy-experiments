@@ -62,14 +62,15 @@ async def basic_status_example(rumor: Rumor, nursery: trio.Nursery):
 
     print("Testing a Status RPC request")
 
-    genesis_root = state.hash_tree_root()
+    head = state.latest_block_header.copy()
+    head.state_root = state.hash_tree_root()
 
     # Sync status
     morty_status = Status(
-        version=GENESIS_FORK_VERSION,
-        finalized_root=genesis_root,
+        version=compute_fork_digest(state.fork.current_version, state.genesis_validators_root),
+        finalized_root=state.finalized_checkpoint.root,
         finalized_epoch=0,
-        head_root=genesis_root,
+        head_root=head.hash_tree_root(),
         head_epoch=0,
     )
 
